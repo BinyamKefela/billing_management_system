@@ -250,12 +250,14 @@ EMAIL_SUBJECT_PREFIX = '[Billing System]'
 
 
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-CELERY_BEAT_SCHEDULE = {
-    'check-overdue-bills-daily': {
-        'task': 'bms.tasks.check_overdue_bills',
-        'schedule': 86400.0,  # every 24 hours
-    },
-}
+
+
+
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Africa/Addis_Ababa'
+
 
