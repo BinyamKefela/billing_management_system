@@ -40,7 +40,7 @@ type Permission = {
 type CustomGroup = {
   id: number;
   name: string;
-  permissions: Permission[];
+  permissions: string[];
   user_count: number;
 };
 
@@ -122,7 +122,23 @@ export default function GroupsPage() {
       
       if (res.ok) {
         const data = await res.json();
-        return data.group_permissions || [];
+        
+        if (Array.isArray(data.group_permissions)) {
+          if (data.group_permissions.length > 0) {
+            if (typeof data.group_permissions[0] === 'object') {
+              return data.group_permissions.map((p: any) => p.codename);
+            } else if (typeof data.group_permissions[0] === 'string') {
+              return data.group_permissions;
+            }
+          }
+          return [];
+        }
+        
+        if (data.permissions && Array.isArray(data.permissions)) {
+          return data.permissions.map((p: any) => p.codename || p);
+        }
+        
+        return [];
       } else {
         return [];
       }
@@ -165,24 +181,17 @@ export default function GroupsPage() {
       if (type === "permissions") {
         try {
           const currentPermissions = await fetchGroupPermissions(group.id);
-          let permissionCodenames: string[] = [];
-          
-          if (Array.isArray(currentPermissions)) {
-            if (currentPermissions.length > 0) {
-              if (typeof currentPermissions[0] === 'object') {
-                permissionCodenames = currentPermissions.map((p: any) => p.codename || p.name || p[0]);
-              } else {
-                permissionCodenames = currentPermissions;
-              }
-            }
-          }
-          setSelectedPermissions(permissionCodenames);
+          setSelectedPermissions(currentPermissions);
         } catch (error) {
-          const groupPermissionCodenames = group.permissions?.map((p) => p.codename) || [];
+          const groupPermissionCodenames = Array.isArray(group.permissions) 
+            ? group.permissions
+            : [];
           setSelectedPermissions(groupPermissionCodenames);
         }
       } else {
-        const groupPermissionCodenames = group.permissions?.map((p) => p.codename) || [];
+        const groupPermissionCodenames = Array.isArray(group.permissions) 
+          ? group.permissions
+          : [];
         setSelectedPermissions(groupPermissionCodenames);
       }
       
@@ -350,19 +359,27 @@ export default function GroupsPage() {
     return "bg-red-100 text-red-600 border-red-200";
   };
 
-  const groupPermissionsByApp = (permissions: Permission[]) => {
-    const grouped: { [key: string]: Permission[] } = {};
+  const getPermissionName = (codename: string) => {
+    const permission = availablePermissions.find(p => p.codename === codename);
+    return permission ? permission.name : codename;
+  };
 
-    permissions.forEach((permission) => {
-      const contentType = permission.content_type || "other";
-      const appLabel = typeof contentType === 'string' 
-        ? contentType.split("_")[0] || "other"
-        : "other";
+  const getPermissionApp = (codename: string) => {
+    const permission = availablePermissions.find(p => p.codename === codename);
+    if (!permission?.content_type) return "other";
+    return permission.content_type.split("_")[0] || "other";
+  };
+
+  const groupPermissionsByApp = (permissions: string[]) => {
+    const grouped: { [key: string]: string[] } = {};
+
+    permissions.forEach((permissionCodename) => {
+      const appLabel = getPermissionApp(permissionCodename);
       
       if (!grouped[appLabel]) {
         grouped[appLabel] = [];
       }
-      grouped[appLabel].push(permission);
+      grouped[appLabel].push(permissionCodename);
     });
 
     return grouped;
@@ -685,13 +702,13 @@ export default function GroupsPage() {
                                 {app}
                               </h4>
                               <div className="space-y-1">
-                                {appPermissions.map((permission, index) => (
+                                {appPermissions.map((permissionCodename, index) => (
                                   <div
                                     key={index}
                                     className="flex items-center gap-2 text-sm text-gray-600"
                                   >
                                     <Check className="w-4 h-4 text-green-600" />
-                                    <span>{permission.name}</span>
+                                    <span>{getPermissionName(permissionCodename)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -799,40 +816,43 @@ export default function GroupsPage() {
                       {availablePermissions.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {Object.entries(
-                            groupPermissionsByApp(availablePermissions)
+                            groupPermissionsByApp(availablePermissions.map(p => p.codename))
                           ).map(([app, appPermissions]) => (
                             <div key={app} className="space-y-2">
                               <h4 className="font-medium text-gray-900 capitalize text-sm border-b pb-1">
-                                {app} ({appPermissions.filter(p => isPermissionSelected(p.codename)).length}/{appPermissions.length})
+                                {app} ({appPermissions.filter(p => isPermissionSelected(p)).length}/{appPermissions.length})
                               </h4>
                               <div className="space-y-2">
-                                {appPermissions.map((permission) => (
-                                  <label
-                                    key={permission.id}
-                                    className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-white transition-colors duration-150"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isPermissionSelected(
-                                        permission.codename
-                                      )}
-                                      onChange={() =>
-                                        handlePermissionToggle(
-                                          permission.codename
-                                        )
-                                      }
-                                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-medium text-gray-700 block truncate">
-                                        {permission.name}
-                                      </span>
-                                      <span className="text-xs text-gray-500 block truncate">
-                                        {permission.codename}
-                                      </span>
-                                    </div>
-                                  </label>
-                                ))}
+                                {appPermissions.map((permissionCodename) => {
+                                  const permission = availablePermissions.find(p => p.codename === permissionCodename);
+                                  return (
+                                    <label
+                                      key={permissionCodename}
+                                      className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-white transition-colors duration-150"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isPermissionSelected(
+                                          permissionCodename
+                                        )}
+                                        onChange={() =>
+                                          handlePermissionToggle(
+                                            permissionCodename
+                                          )
+                                        }
+                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <span className="text-sm font-medium text-gray-700 block truncate">
+                                          {permission?.name || permissionCodename}
+                                        </span>
+                                        <span className="text-xs text-gray-500 block truncate">
+                                          {permissionCodename}
+                                        </span>
+                                      </div>
+                                    </label>
+                                  );
+                                })}
                               </div>
                             </div>
                           ))}

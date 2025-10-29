@@ -10,7 +10,10 @@ class PermissionListView(generics.ListAPIView):
     serializer_class = PermissionSerializer
     permission_classes = [IsAuthenticated,DjangoModelPermissions]
     filter_backends = [OrderingFilter,SearchFilter]
-    search_fields = [field.name for field in Permission._meta.fields]
+    search_fields = search_fields = search_fields = [
+        'name',
+        'codename',
+    ]
     ordering_fields = [field.name for field in Permission._meta.fields]
     ordering = ['id']
     pagination_class = CustomPagination

@@ -19,7 +19,10 @@ class PaymentListView(generics.ListAPIView):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     filter_backends = [SearchFilter, OrderingFilter,DjangoFilterBackend]
-    search_fields = [field.name for field in Payment._meta.fields]
+    search_fields = [
+        'payment_method',
+        'reference_number',
+    ]
     ordering_fields = [field.name for field in Payment._meta.fields]
     ordering = ['id']
     pagination_class = CustomPagination
@@ -29,6 +32,7 @@ class PaymentListView(generics.ListAPIView):
         'customer__id':['exact'],
         'customer__email':['exact'],
         'bill__bill_number':['exact'],
+        'bill__biller__user__id':['exact'],
         
     }
     def get_queryset(self):

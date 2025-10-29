@@ -7,8 +7,10 @@ import {
   BookOpen,
   Bot,
   BoxIcon,
+  BrickWall,
   Command,
   CreditCardIcon,
+  DollarSign,
   Frame,
   GalleryVerticalEnd,
   LogOutIcon,
@@ -44,18 +46,18 @@ const data = {
   teams: [
     {
       name: "Kacha Billing System",
-      logo: AntennaIcon,
-      plan: "Enterprise",
+      logo: DollarSign,
+      plan: "management system",
     },
     {
       name: "Kacha Billing System",
       logo: Antenna,
-      plan: "Startup",
+      plan: "",
     },
     {
       name: "Kacha Billing System",
       logo: Command,
-      plan: "Free",
+      plan: "",
     },
   ],
   navMain: [
@@ -175,8 +177,8 @@ const data = {
       url: "/dashboard/notification",
       icon: Package2Icon,
     },
-    {name:"reports",
-      url:"/dashboard/report",
+    {name:"biller reports",
+      url:"/dashboard/biller_dashboard",
       icon:Settings2
     },
     
@@ -198,7 +200,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={
-          []
+          data.teams
         } />
       </SidebarHeader>
       <SidebarContent>

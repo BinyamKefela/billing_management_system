@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getAuthToken } from "@/app/auth/login/api";
 import { toast } from "react-toastify";
 import { EyeIcon, PencilIcon, TrashIcon, Plus, CreditCard, DollarSign, Calendar, User, Building, FileText, Search, Filter, Check, Clock, AlertCircle, Download } from "lucide-react";
+import Cookies from "js-cookie";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -86,12 +87,19 @@ export default function PaymentsPage() {
   // Fetch payments
   const fetchPayments = async () => {
     setLoading(true);
+    const user_id = Cookies.get("id") ? parseInt(Cookies.get("id") as string, 10) : 0;
     try {
       let url = `${BASE_URL}/get_payments?page=${page}&search=${encodeURIComponent(debouncedSearch)}`;
       if (methodFilter !== "all") {
         url += `&payment_method=${methodFilter}`;
       }
-      
+      if(Cookies.get("is_customer") === "true"){
+        url += `&customer=${user_id}`;
+      }
+      if(Cookies.get("is_biller") === "true"){
+        url += `&bill__biller__user__id=${user_id}`;
+      }
+
       const res = await fetch(url, {
         headers: { 
           "Content-Type": "application/json", 
@@ -114,12 +122,18 @@ export default function PaymentsPage() {
 
   // Fetch bills for payment
   const fetchBills = async () => {
+    const user_id = Cookies.get("id") ? parseInt(Cookies.get("id") as string, 10) : 0;
     try {
-      let url = `${BASE_URL}/get_bills`;
+      let url = `${BASE_URL}/get_bills?page=${page}&search=${encodeURIComponent(debouncedSearch)}`;
       if (statusFilter !== "all") {
-        url += `?status=${statusFilter}`;
+        url += `&status=${statusFilter}`;
       }
-      
+      if(Cookies.get("is_customer") === "true"){
+        url += `&customer=${user_id}`;
+      }
+      if(Cookies.get("is_biller") === "true"){
+        url += `&bill__biller__user__id=${user_id}`;
+      }
       const res = await fetch(url, {
         headers: { 
           "Content-Type": "application/json", 
@@ -190,6 +204,7 @@ export default function PaymentsPage() {
     
     try {
       if (modalType === "add") {
+        data.customer = Cookies.get("id") ? parseInt(Cookies.get("id") as string, 10) : 0;
         const res = await fetch(BASE_URL + "/post_payment", {
           method: "POST",
           headers: { 

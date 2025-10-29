@@ -42,12 +42,10 @@ export default function BillerSignUpPage() {
 
   const formData = watch();
 
-  // Auto-fill name field when company_name changes
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const companyName = e.target.value;
     setValue("company_name", companyName);
     
-    // Auto-fill name field if empty
     if (!formData.name) {
       setValue("name", companyName);
     }
@@ -70,7 +68,6 @@ export default function BillerSignUpPage() {
   const onSubmit = async (data: BillerSignUpFormData) => {
     setLoading(true);
     try {
-      // Use name field if provided, otherwise use company_name
       const requestData = {
         ...data,
         name: data.name || data.company_name,
@@ -87,8 +84,7 @@ export default function BillerSignUpPage() {
       const responseData = await res.json();
 
       if (res.status === 201) {
-        toast.success("Biller account created successfully!");
-        // Reset form
+        toast.success("Check your email to complete registration!");
         Object.keys(data).forEach((key) => {
           setValue(key as keyof BillerSignUpFormData, "");
         });
@@ -106,7 +102,6 @@ export default function BillerSignUpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Side - Sign Up Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">

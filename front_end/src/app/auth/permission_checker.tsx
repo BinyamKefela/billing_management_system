@@ -8,7 +8,8 @@ export function usePermissionCheck(requiredPermission: string | string[], redire
   const router = useRouter();
 
   useEffect(() => {
-    const permissionsCookie = Cookies.get('user_permissions');
+    console.log('Checking permissions...'+Cookies.get('permissions'));
+    const permissionsCookie = Cookies.get('permissions');
     const userPermissions = permissionsCookie ? JSON.parse(permissionsCookie) : [];
 
     let hasPermission = false;

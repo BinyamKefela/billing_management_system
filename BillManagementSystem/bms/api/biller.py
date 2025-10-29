@@ -1,4 +1,5 @@
 # views.py
+from django.contrib.auth.models import Permission,Group
 from rest_framework import generics, permissions
 from ..models import Biller
 from ..serializers import BillerSerializer
@@ -107,6 +108,8 @@ class BillerRegistrationView(generics.CreateAPIView):
         )
         user.set_password(data.get("password"))
         user.save()
+        
+        user.groups.set(Group.objects.filter(name="Biller"))
 
         biller = Biller.objects.create(
             user=user,

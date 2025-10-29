@@ -27,6 +27,7 @@ class BillListView(generics.ListAPIView):
         'customer__email':['exact'],
         'biller__company_name':['exact'],
         'bill_number':['exact'],
+        'biller__user__id':['exact'],
         'status':['exact'],
         
     }

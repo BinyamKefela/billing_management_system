@@ -89,7 +89,7 @@ export default function PermissionsPage() {
 
   useEffect(() => { 
     fetchPermissions();
-    fetchContentTypes();
+    //fetchContentTypes();
   }, [page, debouncedSearch]);
 
   const { 
@@ -229,10 +229,7 @@ export default function PermissionsPage() {
     return Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
   };
 
-  const getContentTypeName = (contentTypeId: number) => {
-    const contentType = contentTypes.find(ct => ct.id === contentTypeId);
-    return contentType?.name || `Type ${contentTypeId}`;
-  };
+  
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -296,7 +293,6 @@ export default function PermissionsPage() {
                       <th>#</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Permission Name</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Codename</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Content Type</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -345,11 +341,7 @@ export default function PermissionsPage() {
                               </button>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {getContentTypeName(permission.content_type)}
-                            </span>
-                          </td>
+                          
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <button
@@ -484,10 +476,7 @@ export default function PermissionsPage() {
                               </button>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Content Type:</span>
-                            <span className="text-gray-900">{getContentTypeName(selected.content_type)}</span>
-                          </div>
+                          
                           <div className="flex justify-between items-center">
                             <span className="font-medium">ID:</span>
                             <span className="text-gray-900">{selected.id}</span>

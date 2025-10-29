@@ -149,7 +149,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['bill'] = BillSerializer(instance.bill).data
-        representation['customer'] = CustomerSerializer(instance.customer).data
+        representation['customer'] = UserSerializer(instance.customer).data
         return representation
     
     
@@ -163,7 +163,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['bill'] = BillSerializer(instance.bill).data
-        representation['customer'] = CustomerSerializer(instance.customer).data
+        representation['customer'] = UserSerializer(instance.customer).data
         return representation
 
 

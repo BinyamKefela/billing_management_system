@@ -6,9 +6,22 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getAuthToken } from "@/app/auth/login/api";
 import { toast } from "react-toastify";
-import { EyeIcon, PencilIcon, TrashIcon, Plus, FileText, Calendar, DollarSign, User, Building, Search, Filter } from "lucide-react";
+import {
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  Plus,
+  FileText,
+  Calendar,
+  DollarSign,
+  User,
+  Building,
+  Search,
+  Filter,
+} from "lucide-react";
 import Cookies from "js-cookie";
 import { usePermissionCheck } from "@/app/auth/permission_checker";
+import { useBillerCheck } from "@/app/auth/biller_checker";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -18,7 +31,7 @@ const billSchema = z.object({
   customer: z.coerce.number().min(1, "Customer is required"),
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
   due_date: z.string().min(1, "Due date is required"),
-  status: z.enum(['pending', 'paid', 'overdue']),
+  status: z.enum(["pending", "paid", "overdue"]),
   description: z.string().optional(),
 });
 
@@ -42,7 +55,7 @@ type Bill = {
   };
   amount: string;
   due_date: string;
-  status: 'pending' | 'paid' | 'overdue';
+  status: "pending" | "paid" | "overdue";
   description?: string;
   created_at: string;
   updated_at: string;
@@ -56,20 +69,25 @@ type Biller = {
 
 type Customer = {
   id: number;
-  email: string;
-  first_name?: string;
-  last_name?: string;
+  user: {
+    id: number;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+  };
 };
 
 export default function BillsPage() {
-
-  usePermissionCheck("bms.view_bill");
+  //usePermissionCheck("bms.view_bill");
+  //useBillerCheck();
   const [bills, setBills] = useState<Bill[]>([]);
   const [billers, setBillers] = useState<Biller[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Bill | null>(null);
-  const [modalType, setModalType] = useState<"add" | "edit" | "view" | "delete" | null>(null);
+  const [modalType, setModalType] = useState<
+    "add" | "edit" | "view" | "delete" | null
+  >(null);
   const [button_clicked, setButtonClicked] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -77,6 +95,7 @@ export default function BillsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [biller_id, setBillerId] = useState<number | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 1000);
@@ -86,15 +105,17 @@ export default function BillsPage() {
   const fetchBills = async () => {
     setLoading(true);
     try {
-      let url = `${BASE_URL}/get_bills?page=${page}&search=${encodeURIComponent(debouncedSearch)}`;
+      let url = `${BASE_URL}/get_bills?page=${page}&search=${encodeURIComponent(
+        debouncedSearch
+      )}`;
       if (statusFilter !== "all") {
         url += `&status=${statusFilter}`;
       }
-      
+
       const res = await fetch(url, {
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${getAuthToken()}` 
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const data = await res.json();
@@ -114,9 +135,9 @@ export default function BillsPage() {
   const fetchBillers = async () => {
     try {
       const res = await fetch(`${BASE_URL}/get_billers`, {
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${getAuthToken()}` 
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const data = await res.json();
@@ -130,68 +151,92 @@ export default function BillsPage() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/get_customer_billers?biller__id=${Cookies.get("id")}`, {
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${getAuthToken()}` 
-        },
-      });
+      const userId = Cookies.get("id");
+      console.log("Fetching customers for biller user ID:", userId);
+
+      const res = await fetch(
+        `${BASE_URL}/get_customer_billers?biller__user__id=${userId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+        }
+      );
+
       const data = await res.json();
+      console.log("Customers API response:", data);
+
       if (res.status === 200) {
-        setCustomers(data.data || data.results || []);
+        const customersData = data.data || data.results || [];
+        console.log("Processed customers data:", customersData);
+        setCustomers(customersData);
+        setBillerId(
+          customersData.length > 0 ? customersData[0].biller.id : null
+        );
+      } else {
+        console.error("Failed to fetch customers:", data);
+        toast.error("Failed to load customers");
       }
-    } catch {
-      console.error("Failed to fetch customers");
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      toast.error("Couldn't fetch customers");
     }
   };
 
-  useEffect(() => { 
+  useEffect(() => {
     fetchBills();
     fetchBillers();
     fetchCustomers();
   }, [page, debouncedSearch, statusFilter]);
 
-  const { 
-    register, 
-    handleSubmit, 
-    reset, 
+  const {
+    register,
+    handleSubmit,
+    reset,
     formState: { errors },
     watch,
-    setValue
+    setValue,
   } = useForm<BillFormData>({
-    resolver: zodResolver(billSchema) as any,
+    resolver: zodResolver(billSchema),
     defaultValues: {
-      status: 'pending',
-    }
+      status: "pending",
+    },
   });
 
   const formValues = watch();
 
   const handleOpen = (type: typeof modalType, bill?: Bill) => {
+    console.log("Opening modal:", type, bill);
     setModalType(type);
     setSelected(bill || null);
-    
+
     if (bill) {
       reset({
         bill_number: bill.bill_number,
         biller: bill.biller,
         customer: bill.customer,
         amount: parseFloat(bill.amount),
-        due_date: bill.due_date.split('T')[0], // Format for date input
+        due_date: bill.due_date.split("T")[0],
         status: bill.status,
         description: bill.description || "",
       });
     } else {
       reset({
-        status: 'pending',
+        bill_number: generateBillNumber(),
+        status: "pending",
+        biller: Cookies.get("id")
+          ? parseInt(Cookies.get("id") as string, 10)
+          : 0,
       });
     }
   };
 
-  const handleClose = () => { 
-    setModalType(null); 
-    setSelected(null); 
-    reset({}); 
+  const handleClose = () => {
+    console.log("Closing modal");
+    setModalType(null);
+    setSelected(null);
+    reset({});
   };
 
   const generateBillNumber = () => {
@@ -201,49 +246,70 @@ export default function BillsPage() {
   };
 
   const onSubmit = async (data: BillFormData) => {
+    console.log("Form submitted:", data);
     setButtonClicked(true);
-    
+
     try {
       if (modalType === "add") {
-        data.biller = Cookies.get("id") ? parseInt(Cookies.get("id") as string, 10) : 0;
+        //const billerId = Cookies.get("id") ? parseInt(Cookies.get("id") as string, 10) : 0;
+        const submitData = {
+          ...data,
+          biller: biller_id,
+        };
+
+        console.log("Sending data:", submitData);
+
         const res = await fetch(BASE_URL + "/post_bill", {
           method: "POST",
-          headers: { 
-            "Content-Type": "application/json", 
-            Authorization: `Bearer ${getAuthToken()}` 
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(submitData),
         });
-        
+
+        const responseData = await res.json();
+        console.log("Response:", responseData);
+
         if (res.status === 201) {
           toast.success("Bill created successfully");
         } else {
-          const errorData = await res.json();
-          toast.error(errorData.error || "Failed to create bill");
+          toast.error(
+            responseData.error ||
+              responseData.message ||
+              "Failed to create bill"
+          );
         }
       } else if (modalType === "edit" && selected) {
         const res = await fetch(`${BASE_URL}/update_bill/${selected.id}`, {
           method: "PATCH",
-          headers: { 
-            "Content-Type": "application/json", 
-            Authorization: `Bearer ${getAuthToken()}` 
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
           },
           body: JSON.stringify(data),
         });
-        
+
+        const responseData = await res.json();
+        console.log("Edit response:", responseData);
+
         if (res.status === 200) {
           toast.success("Bill updated successfully");
         } else {
-          const errorData = await res.json();
-          toast.error(errorData.error || "Failed to update bill");
+          toast.error(
+            responseData.error ||
+              responseData.message ||
+              "Failed to update bill"
+          );
         }
       }
-    } catch {
+    } catch (error) {
+      console.error("Submission error:", error);
       toast.error(`Couldn't ${modalType === "add" ? "create" : "update"} bill`);
-    } finally { 
-      setButtonClicked(false); 
+    } finally {
+      setButtonClicked(false);
     }
-    
+
     await fetchBills();
     handleClose();
   };
@@ -251,13 +317,13 @@ export default function BillsPage() {
   const handleDelete = async () => {
     if (selected) {
       try {
-        const res = await fetch(`${BASE_URL}/delete_bill/${selected.id}`, { 
+        const res = await fetch(`${BASE_URL}/delete_bill/${selected.id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${getAuthToken()}`,
           },
         });
-        
+
         if (res.status === 200) {
           toast.success("Bill deleted successfully");
         } else {
@@ -276,7 +342,10 @@ export default function BillsPage() {
     let end = Math.min(totalPages, page + 2);
     if (page <= 2) end = Math.min(5, totalPages);
     if (page >= totalPages - 1) start = Math.max(totalPages - 4, 1);
-    return Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
+    return Array.from(
+      { length: Math.max(0, end - start + 1) },
+      (_, i) => start + i
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -285,15 +354,20 @@ export default function BillsPage() {
       paid: "bg-green-100 text-green-800 border-green-200",
       overdue: "bg-red-100 text-red-800 border-red-200",
     };
-    return `px-3 py-1 rounded-full text-xs font-medium border ${styles[status as keyof typeof styles]}`;
+    return `px-3 py-1 rounded-full text-xs font-medium border ${
+      styles[status as keyof typeof styles]
+    }`;
   };
 
   const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('en-ET', {
-      style: 'currency',
-      currency: 'ETB',
+    return new Intl.NumberFormat("en-ET", {
+      style: "currency",
+      currency: "ETB",
     }).format(parseFloat(amount));
   };
+
+  // Debug: Check customers data
+  console.log("Current customers:", customers);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -306,14 +380,18 @@ export default function BillsPage() {
                 <FileText className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Bills Management</h1>
-                <p className="text-gray-600">Manage and track all customer bills</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Bills Management
+                </h1>
+                <p className="text-gray-600">
+                  Manage and track all customer bills
+                </p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => {
+                console.log("Create Bill button clicked");
                 handleOpen("add");
-                setValue("bill_number", generateBillNumber());
               }}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
             >
@@ -330,14 +408,14 @@ export default function BillsPage() {
               {/* Search */}
               <div className="relative flex-1 min-w-[300px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input 
-                  type="text" 
-                  placeholder="Search bills by number, customer, or description..." 
-                  value={search} 
-                  onChange={(e) => { 
-                    setPage(1); 
-                    setSearch(e.target.value); 
-                  }} 
+                <input
+                  type="text"
+                  placeholder="Search bills by number, customer, or description..."
+                  value={search}
+                  onChange={(e) => {
+                    setPage(1);
+                    setSearch(e.target.value);
+                  }}
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 />
               </div>
@@ -345,7 +423,7 @@ export default function BillsPage() {
               {/* Status Filter */}
               <div className="flex items-center gap-2">
                 <Filter className="w-5 h-5 text-gray-400" />
-                <select 
+                <select
                   value={statusFilter}
                   onChange={(e) => {
                     setPage(1);
@@ -379,14 +457,30 @@ export default function BillsPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bill #</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Biller</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Due Date</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Bill #
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Biller
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Due Date
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Created
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
 
@@ -397,17 +491,24 @@ export default function BillsPage() {
                           <div className="flex flex-col items-center gap-3 text-gray-500">
                             <FileText className="w-12 h-12 opacity-50" />
                             <p className="text-lg">No bills found</p>
-                            <p className="text-sm">Get started by creating your first bill</p>
+                            <p className="text-sm">
+                              Get started by creating your first bill
+                            </p>
                           </div>
                         </td>
                       </tr>
                     ) : (
                       bills.map((bill) => (
-                        <tr key={bill.id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <tr
+                          key={bill.id}
+                          className="hover:bg-gray-50 transition-colors duration-150"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-blue-600" />
-                              <span className="font-mono text-sm font-semibold text-gray-900">{bill.bill_number}</span>
+                              <span className="font-mono text-sm font-semibold text-gray-900">
+                                {bill.bill_number}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -415,9 +516,12 @@ export default function BillsPage() {
                               <User className="w-4 h-4 text-gray-400" />
                               <div>
                                 <p className="text-sm font-medium text-gray-900">
-                                  {bill.customer?.first_name} {bill.customer?.last_name}
+                                  {bill.customer?.first_name}{" "}
+                                  {bill.customer?.last_name}
                                 </p>
-                                <p className="text-xs text-gray-500">{bill.customer?.email}</p>
+                                <p className="text-xs text-gray-500">
+                                  {bill.customer?.email}
+                                </p>
                               </div>
                             </div>
                           </td>
@@ -425,7 +529,8 @@ export default function BillsPage() {
                             <div className="flex items-center gap-2">
                               <Building className="w-4 h-4 text-gray-400" />
                               <span className="text-sm text-gray-900">
-                                {bill.biller_details?.company_name || bill.biller_details?.name}
+                                {bill.biller_details?.company_name ||
+                                  bill.biller_details?.name}
                               </span>
                             </div>
                           </td>
@@ -447,7 +552,8 @@ export default function BillsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={getStatusBadge(bill.status)}>
-                              {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
+                              {bill.status.charAt(0).toUpperCase() +
+                                bill.status.slice(1)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -505,8 +611,8 @@ export default function BillsPage() {
                           key={p}
                           onClick={() => setPage(p)}
                           className={`px-4 py-2 border rounded-lg transition-all duration-200 ${
-                            p === page 
-                              ? "bg-blue-600 text-white border-blue-600" 
+                            p === page
+                              ? "bg-blue-600 text-white border-blue-600"
                               : "border-gray-300 hover:bg-gray-50"
                           }`}
                         >
@@ -516,7 +622,9 @@ export default function BillsPage() {
 
                       <button
                         disabled={page === totalPages}
-                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        onClick={() =>
+                          setPage((prev) => Math.min(totalPages, prev + 1))
+                        }
                         className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200"
                       >
                         Next
@@ -530,29 +638,39 @@ export default function BillsPage() {
         </div>
       </div>
 
+      {/* Modal */}
       {modalType && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    modalType === 'add' ? 'bg-blue-100 text-blue-600' :
-                    modalType === 'edit' ? 'bg-green-100 text-green-600' :
-                    modalType === 'view' ? 'bg-purple-100 text-purple-600' :
-                    'bg-red-100 text-red-600'
-                  }`}>
+                  <div
+                    className={`p-2 rounded-lg ${
+                      modalType === "add"
+                        ? "bg-blue-100 text-blue-600"
+                        : modalType === "edit"
+                        ? "bg-green-100 text-green-600"
+                        : modalType === "view"
+                        ? "bg-purple-100 text-purple-600"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
                     <FileText className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">
-                    {modalType === "add" ? "Create New Bill" :
-                     modalType === "edit" ? "Edit Bill" :
-                     modalType === "view" ? "Bill Details" : "Delete Bill"}
+                    {modalType === "add"
+                      ? "Create New Bill"
+                      : modalType === "edit"
+                      ? "Edit Bill"
+                      : modalType === "view"
+                      ? "Bill Details"
+                      : "Delete Bill"}
                   </h2>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 text-gray-500 hover:text-gray-700"
                 >
                   ×
                 </button>
@@ -563,44 +681,71 @@ export default function BillsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Bill Number</label>
-                        <p className="text-lg font-mono font-semibold text-gray-900">{selected.bill_number}</p>
+                        <label className="text-sm font-medium text-gray-700">
+                          Bill Number
+                        </label>
+                        <p className="text-lg font-mono font-semibold text-gray-900">
+                          {selected.bill_number}
+                        </p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Amount</label>
-                        <p className="text-xl font-bold text-gray-900">{formatCurrency(selected.amount)}</p>
+                        <label className="text-sm font-medium text-gray-700">
+                          Amount
+                        </label>
+                        <p className="text-xl font-bold text-gray-900">
+                          {formatCurrency(selected.amount)}
+                        </p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Status</label>
+                        <label className="text-sm font-medium text-gray-700">
+                          Status
+                        </label>
                         <span className={getStatusBadge(selected.status)}>
-                          {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
+                          {selected.status.charAt(0).toUpperCase() +
+                            selected.status.slice(1)}
                         </span>
                       </div>
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Customer</label>
+                        <label className="text-sm font-medium text-gray-700">
+                          Customer
+                        </label>
                         <p className="text-gray-900">
-                          {selected.customer_details?.first_name} {selected.customer_details?.last_name}
+                          {selected.customer?.first_name}{" "}
+                          {selected.customer?.last_name}
                         </p>
-                        <p className="text-sm text-gray-500">{selected.customer_details?.email}</p>
+                        <p className="text-sm text-gray-500">
+                          {selected.customer?.email}
+                        </p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Biller</label>
+                        <label className="text-sm font-medium text-gray-700">
+                          Biller
+                        </label>
                         <p className="text-gray-900">
-                          {selected.biller_details?.company_name || selected.biller_details?.name}
+                          {selected.biller_details?.company_name ||
+                            selected.biller_details?.name}
                         </p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Due Date</label>
-                        <p className="text-gray-900">{new Date(selected.due_date).toLocaleDateString()}</p>
+                        <label className="text-sm font-medium text-gray-700">
+                          Due Date
+                        </label>
+                        <p className="text-gray-900">
+                          {new Date(selected.due_date).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
                   </div>
                   {selected.description && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Description</label>
-                      <p className="text-gray-900 mt-1 bg-gray-50 p-3 rounded-lg">{selected.description}</p>
+                      <label className="text-sm font-medium text-gray-700">
+                        Description
+                      </label>
+                      <p className="text-gray-900 mt-1 bg-gray-50 p-3 rounded-lg">
+                        {selected.description}
+                      </p>
                     </div>
                   )}
                   <div className="flex gap-4 pt-4">
@@ -620,11 +765,9 @@ export default function BillsPage() {
                 </div>
               )}
 
-              {/* Add/Edit Modal */}
               {(modalType === "add" || modalType === "edit") && (
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Bill Number */}
                     <div>
                       <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                         <FileText className="w-4 h-4" />
@@ -635,7 +778,9 @@ export default function BillsPage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       />
                       {errors.bill_number && (
-                        <p className="text-red-500 text-sm mt-1">{errors.bill_number.message}</p>
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.bill_number.message}
+                        </p>
                       )}
                     </div>
 
@@ -652,11 +797,11 @@ export default function BillsPage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       />
                       {errors.amount && (
-                        <p className="text-red-500 text-sm mt-1">{errors.amount.message}</p>
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.amount.message}
+                        </p>
                       )}
                     </div>
-
-                    
 
                     <div>
                       <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
@@ -665,22 +810,29 @@ export default function BillsPage() {
                       </label>
                       <select
                         {...register("customer")}
-                        value={formValues.customer || ""}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       >
                         <option value="">Select Customer</option>
-                        {customers.map((customer) => (
-                          <option key={customer?.user.id} value={customer?.user.id}>
-                            {customer?.user?.first_name} {customer?.user?.last_name} ({customer?.user?.email})
+                        {customers.length > 0 ? (
+                          customers.map((customer) => (
+                            <option key={customer.id} value={customer.user.id}>
+                              {customer.user.first_name}{" "}
+                              {customer.user.last_name} ({customer.user.email})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>
+                            No customers available
                           </option>
-                        ))}
+                        )}
                       </select>
                       {errors.customer && (
-                        <p className="text-red-500 text-sm mt-1">{errors.customer.message}</p>
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.customer.message}
+                        </p>
                       )}
                     </div>
 
-                    
                     <div>
                       <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                         <Calendar className="w-4 h-4" />
@@ -692,7 +844,9 @@ export default function BillsPage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       />
                       {errors.due_date && (
-                        <p className="text-red-500 text-sm mt-1">{errors.due_date.message}</p>
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.due_date.message}
+                        </p>
                       )}
                     </div>
 
@@ -702,7 +856,6 @@ export default function BillsPage() {
                       </label>
                       <select
                         {...register("status")}
-                        value={formValues.status || ""}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       >
                         <option value="pending">Pending</option>
@@ -712,7 +865,6 @@ export default function BillsPage() {
                     </div>
                   </div>
 
-                  {/* Description */}
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       Description
@@ -725,7 +877,6 @@ export default function BillsPage() {
                     />
                   </div>
 
-                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={button_clicked}
@@ -734,10 +885,14 @@ export default function BillsPage() {
                     {button_clicked ? (
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        {modalType === "add" ? "Creating Bill..." : "Updating Bill..."}
+                        {modalType === "add"
+                          ? "Creating Bill..."
+                          : "Updating Bill..."}
                       </div>
+                    ) : modalType === "add" ? (
+                      "Create Bill"
                     ) : (
-                      modalType === "add" ? "Create Bill" : "Update Bill"
+                      "Update Bill"
                     )}
                   </button>
                 </form>
@@ -749,10 +904,15 @@ export default function BillsPage() {
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <TrashIcon className="w-8 h-8 text-red-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Bill</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Delete Bill
+                  </h3>
                   <p className="text-gray-600 mb-6">
-                    Are you sure you want to delete bill <strong>{selected.bill_number}</strong> for {selected.customer_details?.first_name} {selected.customer_details?.last_name}?
-                    This action cannot be undone.
+                    Are you sure you want to delete bill{" "}
+                    <strong>{selected.bill_number}</strong> for{" "}
+                    {selected.customer_details?.first_name}{" "}
+                    {selected.customer_details?.last_name}? This action cannot
+                    be undone.
                   </p>
                   <div className="flex gap-4">
                     <button

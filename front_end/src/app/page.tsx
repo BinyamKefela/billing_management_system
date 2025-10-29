@@ -106,8 +106,7 @@ export default function SignUpPage() {
       const responseData = await res.json();
 
       if (res.status === 201) {
-        toast.success("Account created successfully! Please sign in.");
-        // Reset form
+        toast.success("check your email to complete registration!");
         setValue("email", "");
         setValue("password", "");
         setValue("first_name", "");

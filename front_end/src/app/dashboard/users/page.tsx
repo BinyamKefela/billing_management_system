@@ -793,7 +793,7 @@ export default function UsersPage() {
       </div>
 
       {modalType && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30  flex items-center justify-center z-50 p-4">
           <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/20">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
