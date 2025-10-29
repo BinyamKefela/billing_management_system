@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-&etmc#cvsr%3*4$3#@6r&9_y*$#ipj14p9f9t3*%c7*4d*)hin
 DEBUG = True
 
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1','78.47.138.239']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','78.47.138.239','api.sunriseworld.org']
 
 CORS_ALLOW_ALL_ORIGINS = True
 
