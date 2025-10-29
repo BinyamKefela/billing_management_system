@@ -101,6 +101,8 @@ urlpatterns = [
     #---------------------payment routes------------------------------------
     path('get_payments', PaymentListView.as_view(), name='payment-list'),
     path('post_payment', PaymentCreateView.as_view(), name='payment-create'),
+    path('post_payment_bulk', BulkPaymentCreateView.as_view(), name='bulk-payment-create'),
+
     path('get_payment/<int:pk>/', PaymentRetrieveView.as_view(), name='payment-retrieve'),
     path('update_payment/<int:pk>', PaymentUpdateView.as_view(), name='payment-update'),
     path('delete_payment/<int:pk>', PaymentDeleteView.as_view(), name='payment-delete'),
