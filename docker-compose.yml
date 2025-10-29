@@ -3,7 +3,7 @@ services:
     build: .
     container_name: django_app_billing
     ports:
-      - 8000:8000
+      - 8808:8000
     volumes:
       - ./BillManagementSystem:/app
     depends_on:
