@@ -148,8 +148,9 @@ class PaymentSerializer(serializers.ModelSerializer):
         
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['bill'] = BillSerializer(instance.bill).data
         representation['customer'] = UserSerializer(instance.customer).data
+        representation['payment_bills'] = PaymentBillDemoSerializer(instance.payment_bills.filter(payment=instance), many=True).data
+        representation['bills'] = BillSerializer(instance.bills, many=True).data
         return representation
     
     
@@ -166,23 +167,29 @@ class NotificationSerializer(serializers.ModelSerializer):
         representation['customer'] = UserSerializer(instance.customer).data
         return representation
     
-    
-from auditlog.models import LogEntry
-
-class AuditLogSerializer(serializers.ModelSerializer):
+class PaymentBillSerializer(serializers.ModelSerializer):
     class Meta:
-        model = LogEntry
-        fields = [
-            'id',
-            'content_type',
-            'object_pk',
-            'object_repr',
-            'action',
-            'changes',
-            'actor',
-            'remote_addr',
-            'timestamp',
-        ]
+        model = PaymentBill
+        fields = '__all__'
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['payment'] = PaymentSerializer(instance.payment).data
+        representation['bill'] = BillSerializer(instance.bill).data
+        return representation
+
+class PaymentBillDemoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentBill
+        fields = '__all__'
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        #representation['payment'] = PaymentSerializer(instance.payment).data
+        representation['bill'] = BillSerializer(instance.bill).data
+        return representation
+    
+    
 
 
 

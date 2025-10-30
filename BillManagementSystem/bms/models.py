@@ -206,6 +206,10 @@ auditlog.register(Bill)
 
 
 
+
+User = get_user_model()
+
+
 class Payment(models.Model):
     PAYMENT_METHODS = [
         ('cash', 'Cash'),
@@ -214,7 +218,6 @@ class Payment(models.Model):
         ('card', 'Card'),
     ]
 
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='payments')
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=30, choices=PAYMENT_METHODS)
@@ -227,10 +230,25 @@ class Payment(models.Model):
     def __str__(self):
         return f"Payment {self.id} - {self.amount} ETB"
 
+    def total_allocated(self):
+        return sum(a.amount_applied for a in self.payment_bills.all())
+
+
+auditlog.register(Payment)
+
+
+class PaymentBill(models.Model):
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='payment_bills')
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='payment_bills')
+    amount_applied = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.amount_applied} ETB → {self.bill.bill_number}"
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-        total_paid = sum(p.amount for p in self.bill.payments.all())
+        total_paid = sum(a.amount_applied for a in self.bill.payment_bills.all())
         if total_paid >= self.bill.amount:
             self.bill.status = 'paid'
         elif total_paid > 0:
@@ -238,8 +256,10 @@ class Payment(models.Model):
         else:
             self.bill.status = 'pending'
         self.bill.save()
-        
-auditlog.register(Payment)
+
+
+
+auditlog.register(PaymentBill)
 
 
 
