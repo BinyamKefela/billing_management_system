@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path,include
 from rest_framework_simplejwt.views import (TokenObtainPairView,TokenRefreshView,TokenVerifyView)
 
+from bms.api.audit_log import AuditLogListView
 from bms.api.notification import NotificationCreateView
 
 from .api.user import *
@@ -133,6 +134,8 @@ urlpatterns = [
     path('biller/customer_statistics', BillerCustomerStatisticsView.as_view(), name='biller_customer_statistics'),
     path('biller/payment_methods', BillerPaymentMethodsView.as_view(), name='biller_payment_methods'),
     
+    #-------------------audit log routes--------------------------------
+    path('get_audit_logs', AuditLogListView.as_view(), name='audit-log-list'),
     
 ]
 

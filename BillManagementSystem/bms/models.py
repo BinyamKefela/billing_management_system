@@ -161,7 +161,7 @@ auditlog.register(Biller)
 
 
 class CustomerBiller(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer_profiles')
     biller = models.ForeignKey('Biller', on_delete=models.CASCADE, related_name='customers')
     address = models.TextField(blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)

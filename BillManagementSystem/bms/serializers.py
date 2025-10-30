@@ -165,5 +165,24 @@ class NotificationSerializer(serializers.ModelSerializer):
         representation['bill'] = BillSerializer(instance.bill).data
         representation['customer'] = UserSerializer(instance.customer).data
         return representation
+    
+    
+from auditlog.models import LogEntry
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LogEntry
+        fields = [
+            'id',
+            'content_type',
+            'object_pk',
+            'object_repr',
+            'action',
+            'changes',
+            'actor',
+            'remote_addr',
+            'timestamp',
+        ]
+
 
 
