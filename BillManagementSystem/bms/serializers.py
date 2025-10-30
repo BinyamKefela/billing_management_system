@@ -150,7 +150,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['customer'] = UserSerializer(instance.customer).data
         representation['payment_bills'] = PaymentBillDemoSerializer(instance.payment_bills.filter(payment=instance), many=True).data
-        representation['bills'] = BillSerializer(instance.bills, many=True).data
+        #representation['bills'] = BillSerializer(instance.bills, many=True).data
         return representation
     
     
