@@ -489,8 +489,8 @@ def contact_us(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_customers(request):
-        if not request.user.has_perm('bms.view_user'):
-            return Response({"message": "you don't have the permission to view users"}, status=status.HTTP_403_FORBIDDEN)
+        #if not request.user.has_perm('bms.view_user'):
+        #    return Response({"message": "you don't have the permission to view users"}, status=status.HTTP_403_FORBIDDEN)
 
         customers = User.objects.filter(groups__name="Customer")
         if(request.user.is_biller):
