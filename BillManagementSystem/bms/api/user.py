@@ -21,6 +21,7 @@ from datetime import datetime
 from rest_framework.permissions import AllowAny
 import os
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 
 
 User = get_user_model()
@@ -496,6 +497,15 @@ def get_customers(request):
             biller = Biller.objects.get(user=request.user)
             customer_billers = CustomerBiller.objects.filter(biller=biller)
             customers = customers.filter(id__in=customer_billers.values_list('user__id', flat=True))
+        if request.query_params.get('search'):
+            search_term = request.query_params.get('search')
+            customers = customers.filter(
+                Q(first_name__icontains=search_term) |
+                Q(middle_name__icontains=search_term) |
+                Q(last_name__icontains=search_term) |
+                Q(email__icontains=search_term) |
+                Q(phone_number__icontains=search_term)
+            )
         paginator = CustomPagination()
         paginated_customers = paginator.paginate_queryset(customers, request)
         serializer = UserSerializer(paginated_customers, many=True)
