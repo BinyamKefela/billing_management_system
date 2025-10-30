@@ -492,6 +492,10 @@ def get_customers(request):
             return Response({"message": "you don't have the permission to view users"}, status=status.HTTP_403_FORBIDDEN)
 
         customers = User.objects.filter(groups__name="Customer")
+        if(request.user.is_biller):
+            biller = Biller.objects.get(user=request.user)
+            customer_billers = CustomerBiller.objects.filter(biller=biller)
+            customers = customers.filter(id__in=customer_billers.values_list('user__id', flat=True))
         paginator = CustomPagination()
         paginated_customers = paginator.paginate_queryset(customers, request)
         serializer = UserSerializer(paginated_customers, many=True)
